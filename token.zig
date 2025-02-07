@@ -1,8 +1,8 @@
 const std = @import("std");
 
-const Token = struct { type: TokenType, literal: []u8, line: i64 = 0, col: i64 = 0 };
+pub const Token = struct { type: TokenType, literal: []u8, line: u64 = 0, col: u64 = 0 };
 
-const TokenType = enum {
+pub const TokenType = enum {
     ILLEGAL,
     EOF,
     IDENT,

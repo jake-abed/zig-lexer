@@ -1,10 +1,12 @@
 const std = @import("std");
-const token = @import("token.zig");
+const lexer = @import("lexer.zig");
 
 pub fn main() void {
-    std.debug.print("Hello, {s}!\n", .{"World"});
-    var literal = "cook".*;
+    var literal = " == -".*;
     const cook = literal[0..];
-    const tok = token.lookupIdent(cook);
-    std.debug.print("{}\n", .{tok});
+    const l = lexer.init(cook);
+    const tok = l.nextToken();
+    const tok2 = l.nextToken();
+    std.debug.print("{s} {}\n", .{ tok.literal, tok.type });
+    std.debug.print("{s} {}\n", .{ tok2.literal, tok2.type });
 }
