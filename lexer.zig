@@ -2,13 +2,14 @@ const std = @import("std");
 const token = @import("token.zig");
 
 const Lexer = struct {
-    input: []u8,
+    input: [:0]const u8,
     position: u64 = 0,
     readPosition: u64 = 0,
     line: u64 = 1,
     col: u64 = 1,
     ch: u8 = 0,
     pub fn nextToken(self: *Lexer) token.Token {
+        std.debug.print("{s}\n", .{self.input});
         var tok: token.Token = undefined;
 
         self.skipWhitespace();
@@ -61,6 +62,11 @@ const Lexer = struct {
                 var l = [_]u8{self.ch};
                 const literal = l[0..];
                 tok = self.newToken(token.TokenType.SLASH, literal);
+            },
+            0 => {
+                var l = [_]u8{};
+                const literal = l[0..];
+                tok = self.newToken(token.TokenType.EOF, literal);
             },
             else => {
                 var l = [_]u8{0};
@@ -116,8 +122,14 @@ const Lexer = struct {
     }
 };
 
-pub fn init(inp: []u8) *Lexer {
-    var l = Lexer{ .input = inp };
+pub fn init(inp: [:0]const u8, allocator: std.mem.Allocator) error{OutOfMemory}!*Lexer {
+    var l = try allocator.create(Lexer);
+    l.input = inp;
+    l.line = 0;
+    l.col = 0;
+    l.position = 0;
+    l.ch = 0;
+    l.readPosition = 0;
     l.readChar();
-    return &l;
+    return l;
 }
