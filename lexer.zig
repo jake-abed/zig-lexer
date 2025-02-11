@@ -1,135 +1,159 @@
 const std = @import("std");
 const token = @import("token.zig");
+const TokenType = token.TokenType;
 
-const Lexer = struct {
-    input: [:0]const u8,
-    position: u64 = 0,
-    readPosition: u64 = 0,
-    line: u64 = 1,
-    col: u64 = 1,
+pub const Lexer = struct {
+    input: []const u8,
+    allocator: std.mem.Allocator,
+    pos: usize = 0,
+    readPos: usize = 0,
     ch: u8 = 0,
-    pub fn nextToken(self: *Lexer) token.Token {
-        std.debug.print("{s}\n", .{self.input});
-        var tok: token.Token = undefined;
 
-        self.skipWhitespace();
-
-        switch (self.ch) {
+    pub fn nextToken(l: *Lexer) error{OutOfMemory}!*token.Token {
+        var tok = try l.allocator.create(token.Token);
+        l.skipWhitespace();
+        switch (l.ch) {
             '=' => {
-                if (self.peekChar() == '=') {
-                    const ch = self.ch;
-                    self.readChar();
-                    var l = [_]u8{ ch, self.ch };
-                    const literal = l[0..];
-                    tok = token.Token{
-                        .type = token.TokenType.EQ,
-                        .literal = literal,
-                        .line = self.line,
-                        .col = self.col,
-                    };
+                if (l.peekChar() == '=') {
+                    var lit = [_]u8{ l.ch, l.ch };
+                    const literal: []const u8 = try l.allocator.dupe(u8, lit[0..]);
+                    l.readChar();
+                    tok.init(literal, TokenType.EQ);
                 } else {
-                    var l = [_]u8{self.ch};
-                    const literal = l[0..];
-                    tok = self.newToken(token.TokenType.ASSIGN, literal);
+                    var lit = [_]u8{l.ch};
+                    const literal = try l.allocator.dupe(u8, lit[0..]);
+                    tok.init(literal, TokenType.ASSIGN);
                 }
             },
             '-' => {
-                var l = [_]u8{self.ch};
-                const literal = l[0..];
-                tok = self.newToken(token.TokenType.MINUS, literal);
+                var lit = [_]u8{l.ch};
+                const literal: []const u8 = try l.allocator.dupe(u8, lit[0..]);
+                tok.init(literal, TokenType.MINUS);
             },
             '+' => {
-                var l = [_]u8{self.ch};
-                const literal = l[0..];
-                tok = token.Token{
-                    .type = token.TokenType.PLUS,
-                    .literal = literal,
-                    .line = self.line,
-                    .col = self.col,
-                };
-            },
-            '!' => {
-                var l = [_]u8{self.ch};
-                const literal = l[0..];
-                tok = self.newToken(token.TokenType.BANG, literal);
-            },
-            '*' => {
-                var l = [_]u8{self.ch};
-                const literal = l[0..];
-                tok = self.newToken(token.TokenType.ASTERISK, literal);
+                var lit = [_]u8{l.ch};
+                const literal: []const u8 = try l.allocator.dupe(u8, lit[0..]);
+                tok.init(literal, TokenType.PLUS);
             },
             '/' => {
-                var l = [_]u8{self.ch};
-                const literal = l[0..];
-                tok = self.newToken(token.TokenType.SLASH, literal);
+                var lit = [_]u8{l.ch};
+                const literal: []const u8 = try l.allocator.dupe(u8, lit[0..]);
+                tok.init(literal, TokenType.SLASH);
+            },
+            '<' => {
+                var lit = [_]u8{l.ch};
+                const literal: []const u8 = try l.allocator.dupe(u8, lit[0..]);
+                tok.init(literal, TokenType.LT);
+            },
+            '>' => {
+                var lit = [_]u8{l.ch};
+                const literal: []const u8 = try l.allocator.dupe(u8, lit[0..]);
+                tok.init(literal, TokenType.GT);
+            },
+            ';' => {
+                var lit = [_]u8{l.ch};
+                const literal: []const u8 = try l.allocator.dupe(u8, lit[0..]);
+                tok.init(literal, TokenType.SEMICOLON);
+            },
+            ':' => {
+                var lit = [_]u8{l.ch};
+                const literal: []const u8 = try l.allocator.dupe(u8, lit[0..]);
+                tok.init(literal, TokenType.COLON);
+            },
+            '"' => {
+                const literal = try l.readString();
+                tok.init(literal, TokenType.STRING);
             },
             0 => {
-                var l = [_]u8{};
-                const literal = l[0..];
-                tok = self.newToken(token.TokenType.EOF, literal);
+                tok.init("EOF", TokenType.EOF);
             },
             else => {
-                var l = [_]u8{0};
-                const literal = l[0..];
-                tok = token.Token{
-                    .type = token.TokenType.ILLEGAL,
-                    .literal = literal,
-                    .line = self.line,
-                    .col = self.col,
-                };
+                if (isDigit(l.ch)) {
+                    const literal = try l.readNum();
+                    tok.init(literal, TokenType.INT);
+                } else if (isAlpha(l.ch)) {
+                    const literal = try l.readIdent();
+                    const t = try token.lookupIdent(literal);
+                    tok.init(literal, t);
+                } else {
+                    tok.init("", TokenType.ILLEGAL);
+                }
             },
         }
 
-        self.readChar();
-
+        l.readChar();
         return tok;
     }
-    fn readChar(self: *Lexer) void {
-        if (self.readPosition >= self.input.len) {
-            self.ch = 0;
-        } else {
-            self.ch = self.input[@intCast(self.readPosition)];
-        }
-        self.position = self.readPosition;
-        self.readPosition += 1;
-        self.col += 1;
-    }
-    fn peekChar(self: *Lexer) u8 {
-        if (self.readPosition > self.input.len) {
-            return 0;
-        } else {
-            return self.input[@intCast(self.readPosition)];
-        }
-    }
-    fn skipWhitespace(self: *Lexer) void {
-        while (self.ch == '\n' or self.ch == ' ' or self.ch == '\t' or self.ch == '\r') {
-            if (self.ch == '\n' or self.ch == '\r') {
-                self.readChar();
-                self.line += 1;
-                self.col = 0;
-            } else {
-                self.readChar();
+
+    fn readString(l: *Lexer) error{OutOfMemory}![]const u8 {
+        const start = l.pos + 1;
+        while (true) {
+            l.readChar();
+            if (l.ch == '"' or l.ch == 0) {
+                break;
             }
         }
+
+        var lit = l.input[start..l.pos];
+        return try l.allocator.dupe(u8, lit[0..]);
     }
-    fn newToken(self: *Lexer, t: token.TokenType, literal: []u8) token.Token {
-        return token.Token{
-            .type = t,
-            .literal = literal,
-            .col = self.col,
-            .line = self.line,
-        };
+
+    fn readIdent(l: *Lexer) error{OutOfMemory}![]const u8 {
+        const start = l.pos;
+        while (isAlpha(l.ch) or isDigit(l.ch)) {
+            l.readChar();
+        }
+
+        var lit = l.input[start..l.pos];
+        return try l.allocator.dupe(u8, lit[0..]);
+    }
+
+    fn readNum(l: *Lexer) error{OutOfMemory}![]const u8 {
+        const start = l.pos;
+        while (isDigit(l.ch)) {
+            l.readChar();
+        }
+
+        var lit = l.input[start..l.pos];
+        return try l.allocator.dupe(u8, lit[0..]);
+    }
+
+    pub fn readChar(l: *Lexer) void {
+        if (l.readPos >= l.input.len) {
+            l.ch = 0;
+        } else {
+            l.ch = l.input[l.readPos];
+        }
+        l.pos = l.readPos;
+        l.readPos += 1;
+    }
+
+    fn peekChar(l: *Lexer) u8 {
+        if (l.readPos >= l.input.len) {
+            return 0;
+        } else {
+            return l.input[l.readPos];
+        }
+    }
+
+    fn skipWhitespace(l: *Lexer) void {
+        while (l.ch == ' ' or l.ch == '\r' or l.ch == '\n' or l.ch == '\t') {
+            l.readChar();
+        }
     }
 };
 
-pub fn init(inp: [:0]const u8, allocator: std.mem.Allocator) error{OutOfMemory}!*Lexer {
-    var l = try allocator.create(Lexer);
-    l.input = inp;
-    l.line = 0;
-    l.col = 0;
-    l.position = 0;
-    l.ch = 0;
-    l.readPosition = 0;
+pub fn init(inp: []const u8, a: std.mem.Allocator) Lexer {
+    var l = Lexer{ .input = inp, .allocator = a, .pos = 0, .readPos = 0, .ch = 0 };
     l.readChar();
     return l;
+}
+
+fn isAlpha(byte: u8) bool {
+    return (('a' <= byte) and (byte <= 'z')) or
+        (('A' <= byte) and (byte <= 'Z'));
+}
+
+fn isDigit(byte: u8) bool {
+    return '0' <= byte and byte <= '9';
 }

@@ -1,6 +1,18 @@
 const std = @import("std");
 
-pub const Token = struct { type: TokenType, literal: []u8, line: u64 = 0, col: u64 = 0 };
+pub const Token = struct {
+    type: TokenType,
+    literal: []const u8,
+
+    pub fn init(
+        self: *Token,
+        l: []const u8,
+        t: TokenType,
+    ) void {
+        self.literal = l;
+        self.type = t;
+    }
+};
 
 pub const TokenType = enum {
     ILLEGAL,
@@ -41,7 +53,14 @@ pub const TokenType = enum {
     RETURN,
 };
 
-pub fn lookupIdent(ident: []u8) error{OutOfMemory}!TokenType {
+pub fn newToken(t: TokenType, l: []const u8) Token {
+    return Token{
+        .type = t,
+        .literal = l,
+    };
+}
+
+pub fn lookupIdent(ident: []const u8) error{OutOfMemory}!TokenType {
     var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
     defer arena.deinit();
     const allocator = arena.allocator();
