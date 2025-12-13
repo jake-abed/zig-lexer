@@ -64,6 +64,26 @@ pub const Lexer = struct {
                 const literal = try l.readString();
                 tok.init(literal, TokenType.STRING);
             },
+            '{' => {
+                const lit = [_]u8{l.ch};
+                const literal: []const u8 = try l.allocator.dupe(u8, lit[0..]);
+                tok.init(literal, TokenType.LBRACE);
+            },
+            '}' => {
+                const lit = [_]u8{l.ch};
+                const literal: []const u8 = try l.allocator.dupe(u8, lit[0..]);
+                tok.init(literal, TokenType.RBRACE);
+            },
+            '(' => {
+                const lit = [_]u8{l.ch};
+                const literal: []const u8 = try l.allocator.dupe(u8, lit[0..]);
+                tok.init(literal, TokenType.LPAREN);
+            },
+            ')' => {
+                const lit = [_]u8{l.ch};
+                const literal: []const u8 = try l.allocator.dupe(u8, lit[0..]);
+                tok.init(literal, TokenType.RPAREN);
+            },
             0 => {
                 tok.init("EOF", TokenType.EOF);
             },
@@ -71,10 +91,12 @@ pub const Lexer = struct {
                 if (isDigit(l.ch)) {
                     const literal = try l.readNum();
                     tok.init(literal, TokenType.INT);
+                    return tok;
                 } else if (isAlpha(l.ch)) {
                     const literal = try l.readIdent();
                     const t = try token.lookupIdent(literal, l.allocator);
                     tok.init(literal, t);
+                    return tok;
                 } else {
                     tok.init("", TokenType.ILLEGAL);
                 }
@@ -156,4 +178,45 @@ fn isAlpha(byte: u8) bool {
 
 fn isDigit(byte: u8) bool {
     return '0' <= byte and byte <= '9';
+}
+
+test "is alpha" {
+    try std.testing.expect(isAlpha('a') == true);
+    try std.testing.expect(isAlpha('A') == true);
+    try std.testing.expect(isAlpha('f') == true);
+    try std.testing.expect(isAlpha('F') == true);
+    try std.testing.expect(isAlpha('!') == false);
+    try std.testing.expect(isAlpha('3') == false);
+}
+
+test "is digit" {
+    try std.testing.expect(isDigit('4') == true);
+    try std.testing.expect(isDigit('2') == true);
+    try std.testing.expect(isDigit('0') == true);
+    try std.testing.expect(isDigit('F') == false);
+    try std.testing.expect(isDigit('*') == false);
+}
+
+test "lexer test one" {
+    var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+    const allocator = arena.allocator();
+    defer arena.deinit();
+
+    var l = init("aight jesse = \"meth cook\";", allocator);
+    const token_one = try l.nextToken();
+    const token_two = try l.nextToken();
+    const token_three = try l.nextToken();
+    const token_four = try l.nextToken();
+    const token_five = try l.nextToken();
+
+    try std.testing.expect(token_one.type == TokenType.CONST);
+    try std.testing.expect(token_two.type == TokenType.IDENT);
+    try std.testing.expect(std.mem.eql(u8, token_two.literal, "jesse"));
+    try std.testing.expect(token_three.type == TokenType.ASSIGN);
+    try std.testing.expect(token_four.type == TokenType.STRING);
+    try std.testing.expect(std.mem.eql(u8, token_four.literal, "meth cook"));
+    try std.testing.expect(token_five.type == TokenType.SEMICOLON);
+
+    const token_six = try l.nextToken();
+    try std.testing.expect(token_six.type == TokenType.EOF);
 }

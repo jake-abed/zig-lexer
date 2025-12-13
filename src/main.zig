@@ -7,7 +7,15 @@ pub fn main() !void {
     const allocator = arena.allocator();
     defer arena.deinit();
 
-    var l = lexer.init("aight bet zig = \"Very cool\";", allocator);
+    const input =
+        \\aight bet zig = "Very cool programming language";
+        \\aight cook (meat) {
+        \\  uh (1 == 2) send yee;
+        \\  tho send nah;
+        \\};
+    ;
+
+    var l = lexer.init(input, allocator);
 
     while (l.ch != 0) {
         const tok = try l.nextToken();
