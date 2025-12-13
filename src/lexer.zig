@@ -73,7 +73,7 @@ pub const Lexer = struct {
                     tok.init(literal, TokenType.INT);
                 } else if (isAlpha(l.ch)) {
                     const literal = try l.readIdent();
-                    const t = try token.lookupIdent(literal);
+                    const t = try token.lookupIdent(literal, l.allocator);
                     tok.init(literal, t);
                 } else {
                     tok.init("", TokenType.ILLEGAL);

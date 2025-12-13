@@ -60,11 +60,7 @@ pub fn newToken(t: TokenType, l: []const u8) Token {
     };
 }
 
-pub fn lookupIdent(ident: []const u8) error{OutOfMemory}!TokenType {
-    var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
-    defer arena.deinit();
-    const allocator = arena.allocator();
-
+pub fn lookupIdent(ident: []const u8, allocator: std.mem.Allocator) error{OutOfMemory}!TokenType {
     var map = std.StringHashMap(TokenType).init(allocator);
     try map.put("cook", TokenType.FUNC);
     try map.put("aight", TokenType.CONST);
@@ -76,4 +72,19 @@ pub fn lookupIdent(ident: []const u8) error{OutOfMemory}!TokenType {
     try map.put("send", TokenType.RETURN);
 
     return map.get(ident) orelse TokenType.IDENT;
+}
+
+test "ident lookups work" {
+    var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+    defer arena.deinit();
+    const allocator = arena.allocator();
+
+    try std.testing.expect(lookupIdent("cook", allocator) catch unreachable == TokenType.FUNC);
+    try std.testing.expect(lookupIdent("aight", allocator) catch unreachable == TokenType.CONST);
+    try std.testing.expect(lookupIdent("bet", allocator) catch unreachable == TokenType.LET);
+    try std.testing.expect(lookupIdent("yee", allocator) catch unreachable == TokenType.TRUE);
+    try std.testing.expect(lookupIdent("nah", allocator) catch unreachable == TokenType.FALSE);
+    try std.testing.expect(lookupIdent("uh", allocator) catch unreachable == TokenType.IF);
+    try std.testing.expect(lookupIdent("tho", allocator) catch unreachable == TokenType.ELSE);
+    try std.testing.expect(lookupIdent("send", allocator) catch unreachable == TokenType.RETURN);
 }
