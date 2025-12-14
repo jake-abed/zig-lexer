@@ -13,6 +13,7 @@ pub fn main() !void {
         \\  uh (1 == 2) send yee;
         \\  tho send nah;
         \\};
+        \\(10 >= 9) && (9 <= 10);
     ;
 
     var l = lexer.init(input, allocator);

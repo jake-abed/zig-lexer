@@ -20,73 +20,46 @@ pub const Lexer = struct {
                     l.readChar();
                     tok.init(literal, TokenType.EQ);
                 } else {
-                    var lit = [_]u8{l.ch};
-                    const literal = try l.allocator.dupe(u8, lit[0..]);
-                    tok.init(literal, TokenType.ASSIGN);
+                    try l.addSingleCharToken(tok, TokenType.ASSIGN);
                 }
             },
-            '-' => {
-                var lit = [_]u8{l.ch};
-                const literal: []const u8 = try l.allocator.dupe(u8, lit[0..]);
-                tok.init(literal, TokenType.MINUS);
-            },
-            '+' => {
-                var lit = [_]u8{l.ch};
-                const literal: []const u8 = try l.allocator.dupe(u8, lit[0..]);
-                tok.init(literal, TokenType.PLUS);
-            },
-            '/' => {
-                var lit = [_]u8{l.ch};
-                const literal: []const u8 = try l.allocator.dupe(u8, lit[0..]);
-                tok.init(literal, TokenType.SLASH);
-            },
+            '-' => try l.addSingleCharToken(tok, TokenType.MINUS),
+            '+' => try l.addSingleCharToken(tok, TokenType.PLUS),
+            '/' => try l.addSingleCharToken(tok, TokenType.SLASH),
             '<' => {
-                var lit = [_]u8{l.ch};
-                const literal: []const u8 = try l.allocator.dupe(u8, lit[0..]);
-                tok.init(literal, TokenType.LT);
+                if (l.peekChar() == '=') {
+                    var lit = [_]u8{ l.ch, '=' };
+                    const literal: []const u8 = try l.allocator.dupe(u8, lit[0..]);
+                    l.readChar();
+                    tok.init(literal, TokenType.LTEQ);
+                } else {
+                    try l.addSingleCharToken(tok, TokenType.LT);
+                }
             },
             '>' => {
-                var lit = [_]u8{l.ch};
-                const literal: []const u8 = try l.allocator.dupe(u8, lit[0..]);
-                tok.init(literal, TokenType.GT);
+                if (l.peekChar() == '=') {
+                    var lit = [_]u8{ l.ch, '=' };
+                    const literal: []const u8 = try l.allocator.dupe(u8, lit[0..]);
+                    l.readChar();
+                    tok.init(literal, TokenType.GTEQ);
+                } else {
+                    try l.addSingleCharToken(tok, TokenType.GT);
+                }
             },
-            ';' => {
-                var lit = [_]u8{l.ch};
-                const literal: []const u8 = try l.allocator.dupe(u8, lit[0..]);
-                tok.init(literal, TokenType.SEMICOLON);
-            },
-            ':' => {
-                var lit = [_]u8{l.ch};
-                const literal: []const u8 = try l.allocator.dupe(u8, lit[0..]);
-                tok.init(literal, TokenType.COLON);
-            },
+            ';' => try l.addSingleCharToken(tok, TokenType.SEMICOLON),
+            ':' => try l.addSingleCharToken(tok, TokenType.COLON),
             '"' => {
                 const literal = try l.readString();
                 tok.init(literal, TokenType.STRING);
             },
-            '{' => {
-                const lit = [_]u8{l.ch};
-                const literal: []const u8 = try l.allocator.dupe(u8, lit[0..]);
-                tok.init(literal, TokenType.LBRACE);
-            },
-            '}' => {
-                const lit = [_]u8{l.ch};
-                const literal: []const u8 = try l.allocator.dupe(u8, lit[0..]);
-                tok.init(literal, TokenType.RBRACE);
-            },
-            '(' => {
-                const lit = [_]u8{l.ch};
-                const literal: []const u8 = try l.allocator.dupe(u8, lit[0..]);
-                tok.init(literal, TokenType.LPAREN);
-            },
-            ')' => {
-                const lit = [_]u8{l.ch};
-                const literal: []const u8 = try l.allocator.dupe(u8, lit[0..]);
-                tok.init(literal, TokenType.RPAREN);
-            },
-            0 => {
-                tok.init("EOF", TokenType.EOF);
-            },
+            ',' => try l.addSingleCharToken(tok, TokenType.COMMA),
+            '[' => try l.addSingleCharToken(tok, TokenType.LBRACKET),
+            ']' => try l.addSingleCharToken(tok, TokenType.RBRACKET),
+            '{' => try l.addSingleCharToken(tok, TokenType.LBRACE),
+            '}' => try l.addSingleCharToken(tok, TokenType.RBRACE),
+            '(' => try l.addSingleCharToken(tok, TokenType.LPAREN),
+            ')' => try l.addSingleCharToken(tok, TokenType.RPAREN),
+            0 => tok.init("EOF", TokenType.EOF),
             else => {
                 if (isDigit(l.ch)) {
                     const literal = try l.readNum();
@@ -105,6 +78,12 @@ pub const Lexer = struct {
 
         l.readChar();
         return tok;
+    }
+
+    fn addSingleCharToken(l: *Lexer, tok: *token.Token, token_type: TokenType) error{OutOfMemory}!void {
+        const lit = [_]u8{l.ch};
+        const literal: []const u8 = try l.allocator.dupe(u8, lit[0..]);
+        tok.init(literal, token_type);
     }
 
     fn readString(l: *Lexer) error{OutOfMemory}![]const u8 {
