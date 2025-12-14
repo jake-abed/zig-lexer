@@ -23,6 +23,26 @@ pub const Lexer = struct {
                     try l.addSingleCharToken(tok, TokenType.ASSIGN);
                 }
             },
+            '&' => {
+                if (l.peekChar() == '&') {
+                    var lit = [_]u8{ l.ch, l.ch };
+                    const literal: []const u8 = try l.allocator.dupe(u8, lit[0..]);
+                    l.readChar();
+                    tok.init(literal, TokenType.AND);
+                } else {
+                    try l.addSingleCharToken(tok, TokenType.AMPERSAND);
+                }
+            },
+            '|' => {
+                if (l.peekChar() == '|') {
+                    var lit = [_]u8{ l.ch, l.ch };
+                    const literal: []const u8 = try l.allocator.dupe(u8, lit[0..]);
+                    l.readChar();
+                    tok.init(literal, TokenType.OR);
+                } else {
+                    try l.addSingleCharToken(tok, TokenType.PIPE);
+                }
+            },
             '-' => try l.addSingleCharToken(tok, TokenType.MINUS),
             '+' => try l.addSingleCharToken(tok, TokenType.PLUS),
             '/' => try l.addSingleCharToken(tok, TokenType.SLASH),

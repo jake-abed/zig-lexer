@@ -35,6 +35,8 @@ pub const TokenType = enum {
     COMMA,
     SEMICOLON,
     COLON,
+    AND,
+    OR,
     AMPERSAND,
     PIPE,
     LPAREN,
