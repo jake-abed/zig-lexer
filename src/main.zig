@@ -14,6 +14,7 @@ pub fn main() !void {
         \\  tho send nah;
         \\};
         \\(10 >= 9) && (9 <= 10);
+        \\aight bet tylenol = [1, 3, 3, 7];
     ;
 
     var l = lexer.init(input, allocator);
